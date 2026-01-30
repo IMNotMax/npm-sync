@@ -38,7 +38,7 @@ cat << 'EOF'
                    INSTALLATION RÉUSSIE - INSTALLATION SUCCESSFUL
 ================================================================================
 
-[FRANÇAIS]
+[FRANÇAIS] (ENGLISH BELOW)
 
 npm-sync a été installé avec succès !
 
