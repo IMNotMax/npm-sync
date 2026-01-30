@@ -1,7 +1,18 @@
 #!/bin/bash
 
+# Vérifie si l'utilisateur est root ou non
+if [ "$(id -u)" -eq 0 ]; then
+    # L'utilisateur est root
+    USER_HOME=/root
+    echo "Utilisateur : root"
+else
+    # L'utilisateur n'est pas root
+    USER_HOME=/home/$USER
+    echo "Utilisateur : $USER"
+fi
+
 # Définit le chemin du fichier d'environnement cible
-TARGET_ENV_FILE=/root/.env_npm-sync
+TARGET_ENV_FILE=$USER_HOME/.env_npm-sync
 
 # Script d'installation pour npm-sync
 
@@ -26,8 +37,12 @@ cp .env_npm-sync_example $TARGET_ENV_FILE # Ne pas écraser si un fichier existe
 # Définit les permissions du fichier d'environnement pour qu'il soit accessible uniquement par le propriétaire
 chmod 600 $TARGET_ENV_FILE
 
-# Change le propriétaire du fichier d'environnement pour root
-chown root:root $TARGET_ENV_FILE
+# Change le propriétaire du fichier d'environnement selon l'utilisateur courant
+if [ "$(id -u)" -eq 0 ]; then
+    chown root:root $TARGET_ENV_FILE
+else
+    chown $USER:$USER $TARGET_ENV_FILE
+fi
 
 ## Message de finalisation
 

@@ -18,7 +18,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # Charge les variables d'environnement
-ENV_FILE="/root/.env"
+ENV_FILE="/root/.env_npm-sync"
 if [[ -f "$ENV_FILE" ]]; then
   export $(grep -v '^#' "$ENV_FILE" | xargs)
 else
