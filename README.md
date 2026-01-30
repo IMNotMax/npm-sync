@@ -42,14 +42,15 @@
  sh install.sh
  ```
 
- Le script `install.sh` copie le script `npm-sync` dans `/usr/local/bin`, crée un fichier d'exemple d'environnement si nécessaire et positionne les permissions appropriées.
+ Le script `install.sh` copie le script `npm-sync` dans `/usr/local/bin`, crée un fichier d'environnement et positionne les permissions appropriées.
+ Veuillez éditer le fichier .env_npm-sync et y renseigner toutes les informations nécessaires
 
  ## Utilisation
 
  Exécutez la commande suivante pour lancer la synchronisation manuellement :
 
  ```bash
- /usr/local/bin/npm-sync
+ npm-sync
  ```
 
  ## Planifier l'exécution (crontab)
@@ -63,20 +64,26 @@
  Le fichier `/var/log/npm-sync.log` contiendra les sorties et erreurs pour faciliter le diagnostic.
 
  ## Configuration
+ Le fichier .env_npm-sync doit être mis à jour 
 
- Copier et adapter l'exemple d'environnement fourni :
+    PIHOLE_PASSWORD=your_pihole_password_here
+    Rensigner le mot de passe du serveur pihole (nécessaire pour obtenir les tokens afin de mettre à jour les Records DNS)
+    
+    PIHOLE_HOST=http://your-pihole.local
+    l'URL de votre serveur Pihole
 
- ```bash
- cp .env_npm-sync_example /root/.env_npm-sync
- # Modifier /root/.env_npm-sync selon votre infrastructure
- ```
+    NPM_HOST=192.168.x.x # Replace with your NPM host IP
+    L'IP de votre serveur NPM
 
- Assurez-vous que le fichier d'environnement a des permissions restreintes :
+    MIN_DOMAIN_COUNT=1
+    Si vous avez plusieurs domaines gérés dans votre NPM, cela permet de remonter la config NPM dans Pihole à partir d'une occurence de sub-domain.domain.tld. Si vous faites des tests avec un autre domaine (et possiblement un autre serveur DNS) augmentez cette valeur
+    ATTENTION, votre domaine principal peut être impacté
 
- ```bash
- chmod 600 /root/.env_npm-sync
- chown root:root /root/.env_npm-sync
- ```
+    CLEANUP_ORPHANS=true # Set to true to remove orphaned domains from Pi-hole
+    Permet de supprimer le ou les derniers sub-domain d'un domain.tld dans pihole lorsque qu'il n'existent plus dans NPM
+
+    NPM_SSH_KEY_PATH=/home/$USER/.ssh/id_pihole # Replace with the path to your SSH key
+    Chemin de la clé SSH (le chemin est déterminé dans l'install en fonction de votre user : root ou non)
 
  ## Contribution
 
