@@ -1,0 +1,177 @@
+#!/bin/bash
+set -e
+
+# Fonction de nettoyage
+cleanup() {
+  local exit_code=$?
+  rm -f "$CSV" "$DOMAINS" "$ALL_DOMAINS" 2>/dev/null
+  unset PIHOLE_PASSWORD SID CSRF AUTH_RESPONSE
+
+  if [[ -n "$SID" ]]; then
+    curl -sS -X DELETE "${PIHOLE_HOST}/api/auth" \
+      -H "X-FTL-SID: ${SID}" > /dev/null 2>&1 || true
+  fi
+
+  exit $exit_code
+}
+
+trap cleanup EXIT INT TERM
+
+# Charge les variables d'environnement
+ENV_FILE="/root/.env"
+if [[ -f "$ENV_FILE" ]]; then
+  export $(grep -v '^#' "$ENV_FILE" | xargs)
+else
+  echo "❌ Fichier $ENV_FILE introuvable"
+  exit 1
+fi
+
+# Variables
+SSH="ssh -i {NPM_SSH_KEY_PATH} -o ConnectTimeout=5 root@${NPM_HOST}"
+CSV="/tmp/npm_domains.csv"
+ALL_DOMAINS="/tmp/all_domains.txt"
+DOMAINS="/tmp/npm_domains.txt"
+MIN_DOMAIN_COUNT=${MIN_DOMAIN_COUNT:-1} # Valeur par défaut si non définie
+
+# Validation
+if [[ -z "$PIHOLE_HOST" || -z "$PIHOLE_PASSWORD" || -z "$NPM_HOST" ]]; then
+  echo "❌ Variables manquantes dans .env"
+  exit 1
+fi
+
+# 1. Authentification API Pi-hole
+echo "🔐 Authentification Pi-hole..."
+AUTH_RESPONSE=$(curl -sS -X POST "${PIHOLE_HOST}/api/auth" \
+  -H "Content-Type: application/json" \
+  -d "{\"password\":\"${PIHOLE_PASSWORD}\"}")
+
+SID=$(echo "$AUTH_RESPONSE" | jq -r '.session.sid')
+CSRF=$(echo "$AUTH_RESPONSE" | jq -r '.session.csrf')
+
+if [[ "$SID" == "null" || "$CSRF" == "null" ]]; then
+  echo "❌ Échec authentification"
+  exit 1
+fi
+
+# 2. Récupère tous les domaines depuis NPM
+echo "📥 Récupération domaines NPM..."
+DOMAINS_RAW=$($SSH "sqlite3 /data/database.sqlite 'SELECT domain_names FROM proxy_host WHERE is_deleted = 0;'")
+echo "$DOMAINS_RAW" | jq -r '.[]' 2>/dev/null | sort -u > "$ALL_DOMAINS"
+
+# 3. Détecte tous les domaines cibles (seuil: au moins 3 occurrences)
+TARGET_DOMAINS=$(awk -F. -v min="$MIN_DOMAIN_COUNT" '{
+  if (NF >= 2) {
+    suffix = $(NF-1)"."$NF
+    count[suffix]++
+  }
+}
+END {
+  for (s in count) {
+    if (count[s] >= min) print s
+  }
+}' "$ALL_DOMAINS")
+
+# Vérifie TARGET_DOMAINS
+if [[ -z "$TARGET_DOMAINS" ]]; then
+  echo "❌ Impossible de détecter les domaines cibles"
+  exit 1
+fi
+
+echo "🎯 Domaines cibles détectés: $TARGET_DOMAINS"
+
+# Compteurs globaux
+TOTAL_DELETE=0
+TOTAL_ADD=0
+
+# Boucle sur chaque domaine cible
+for TARGET_DOMAIN in $TARGET_DOMAINS; do
+  echo ""
+  echo "📍 Traitement de ${TARGET_DOMAIN}..."
+
+
+ # 4. Filtre les domaines du domaine cible (sous-domaines ET racine)
+  awk -v target="$TARGET_DOMAIN" '
+    $0 == target || $0 ~ "\\." target "$"
+  ' "$ALL_DOMAINS" > "$DOMAINS"
+
+  COUNT=$(wc -l < "$DOMAINS")
+  echo "📊 ${COUNT} domaines ${TARGET_DOMAIN} trouvés"
+
+ # 5. Récupère CNAMEs actuels de Pi-hole
+  echo "🔍 Récupération CNAMEs existants..."
+  CURRENT_CNAMES=$(curl -sS -X GET "${PIHOLE_HOST}/api/config/dns/cnameRecords" \
+    -H "X-FTL-SID: ${SID}")
+
+  EXISTING=$(echo "$CURRENT_CNAMES" | jq -r "(.config.dns.cnameRecords // []) | .[] | select(endswith(\",${TARGET_DOMAIN}\")) | split(\",\")[0]" | sort)
+
+ # 6. Détermine les CNAMEs à supprimer et ajouter
+  TO_DELETE=$(comm -23 <(echo "$EXISTING") <(sort "$DOMAINS"))
+  TO_ADD=$(comm -13 <(echo "$EXISTING") <(sort "$DOMAINS"))
+
+  # Comptage sans grep -c
+  DELETE_COUNT=$(echo "$TO_DELETE" | awk 'NF' | wc -l)
+  ADD_COUNT=$(echo "$TO_ADD" | awk 'NF' | wc -l)
+
+  echo "🗑️  ${DELETE_COUNT} CNAMEs à supprimer"
+  echo "➕ ${ADD_COUNT} CNAMEs à ajouter"
+
+  # 7. Supprime les CNAMEs obsolètes
+  if [[ -n "$TO_DELETE" ]]; then
+    while read domain; do
+      [[ -z "$domain" ]] && continue
+      ENCODED="${domain}%2C${TARGET_DOMAIN}"
+
+      HTTP_CODE=$(curl -sS -w "%{http_code}" -o /dev/null \
+        -X DELETE "${PIHOLE_HOST}/api/config/dns/cnameRecords/${ENCODED}" \
+        -H "X-FTL-SID: ${SID}" \
+        -H "X-FTL-CSRF: ${CSRF}")
+
+      if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "204" ]]; then
+        echo "  ❌ ${domain}"
+      else
+        echo "  ⚠️  Échec suppression ${domain} (HTTP ${HTTP_CODE})"
+      fi
+    done <<< "$TO_DELETE"
+  fi
+
+  # 8. Ajoute les nouveaux CNAMEs
+  if [[ -n "$TO_ADD" ]]; then
+    while read domain; do
+      [[ -z "$domain" ]] && continue
+
+      ENCODED="${domain}%2C${TARGET_DOMAIN}"
+      RESPONSE=$(curl -sS -w "\n%{http_code}" \
+        -X PUT "${PIHOLE_HOST}/api/config/dns/cnameRecords/${ENCODED}" \
+        -H "X-FTL-SID: ${SID}" \
+        -H "X-FTL-CSRF: ${CSRF}" \
+        -H "Content-Type: application/json" \
+        -d "{}")
+
+      HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+      BODY=$(echo "$RESPONSE" | head -n-1)
+
+      if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "201" || "$HTTP_CODE" == "204" ]]; then
+        echo "  ✅ ${domain}"
+      else
+        if echo "$BODY" | grep -q "duplicate CNAME"; then
+          echo "  ℹ️  ${domain} (déjà existant)"
+        else
+          echo "  ⚠️  Échec ajout ${domain} (HTTP ${HTTP_CODE})"
+        fi
+      fi
+    done <<< "$TO_ADD"
+  fi
+
+  # Cumule les compteurs
+  TOTAL_DELETE=$((TOTAL_DELETE + DELETE_COUNT))
+  TOTAL_ADD=$((TOTAL_ADD + ADD_COUNT))
+done
+
+# 9. Reload DNS (une seule fois après tous les domaines)
+echo ""
+echo "♻️  Rechargement DNS..."
+curl -sS --http1.1 -X POST "${PIHOLE_HOST}/api/action/restartdns" \
+  -H "X-FTL-SID: ${SID}" \
+  -H "X-FTL-CSRF: ${CSRF}" > /dev/null 2>&1 || echo "⚠️  Échec restart DNS"
+
+echo "✅ Synchronisation terminée : ${TOTAL_DELETE} supprimés, ${TOTAL_ADD} ajoutés"
