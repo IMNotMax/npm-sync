@@ -9,8 +9,7 @@ TARGET_ENV_FILE=/root/.env_npm-sync
 cp npm-sync /usr/local/bin/
 
 # Vérifie si /usr/local/bin est dans le PATH, sinon l'ajouter
-# Il est important que ce répertoire soit dans le PATH pour exécuter npm-sync depuis n'importe quel terminal
-if [[ ! ":$PATH:" == *":/usr/local/bin:"* ]]; then
+if ! echo ":$PATH:" | grep -q ":/usr/local/bin:"; then
     echo "/usr/local/bin n'est pas dans le PATH. Ajout en cours..."
     export PATH="/usr/local/bin:$PATH"
     echo "Le chemin a été mis à jour."
