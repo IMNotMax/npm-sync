@@ -82,6 +82,9 @@
 
  Les contributions sont bienvenues : corrections, tests et améliorations. Ouvrez une issue ou une pull request sur le dépôt.
 
+## A Faire 
+- Traduire en anglais le reste de la documentation
+
  ## Licence
 MIT
  Indiquer la licence du projet ici (par exemple MIT).
