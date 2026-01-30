@@ -29,61 +29,64 @@ chmod 600 $TARGET_ENV_FILE
 # Change le propriétaire du fichier d'environnement pour root
 chown root:root $TARGET_ENV_FILE
 
+## Message de finalisation
 
-#### FRENCH VERSION ####
+# Affiche le message de succès en français et en anglais
+cat << 'EOF'
 
-# 🎉 npm-sync installé avec succès !
-echo -e "\n🎉 npm-sync a été installé avec succès !\n"
+================================================================================
+                   INSTALLATION RÉUSSIE - INSTALLATION SUCCESSFUL
+================================================================================
 
-# 🔧 Configuration automatique (avec cron)
-echo -e "Vous pouvez désormais utiliser le script 'npm-sync' pour synchroniser vos paquets NPM.\n"
-echo -e "🔧 Configuration automatique (avec cron)\n"
-echo -e "Pour exécuter 'npm-sync' toutes les 15 minutes, ajoutez cette ligne à votre crontab : \n"
-echo -e "# */15 * * * * /usr/local/bin/npm-sync >> /var/log/npm-sync.log 2>&1\n"
-echo -e "✅ Cette ligne redirige les logs d'exécution vers le fichier `/var/log/npm-sync.log` pour un suivi facile.\n"
+[FRANÇAIS]
 
-# 🔁 Exécution manuelle
-echo -e "🔁 Exécution manuelle\n"
-echo -e "Si vous préférez lancer la synchronisation à la demande, utilisez simplement la commande : \n"
-echo -e "npm-sync\n"
+npm-sync a été installé avec succès !
 
-# 📝 Informations complémentaires
-echo -e "\nℹ️ Informations complémentaires : \n"
-echo -e "- Le script est installé dans `/usr/local/bin/npm-sync`.\n"
-echo -e "- Les logs sont stockés dans `/var/log/npm-sync.log` (si activés).\n"
-echo -e "- Vous pouvez personnaliser les paramètres dans le script principal.\n"
+Vous pouvez désormais utiliser le script pour synchroniser vos paquets NPM.
 
-# 📝 Conseil
-echo -e "\n💡 Conseil : \n"
-echo -e "Pour modifier votre crontab, utilisez la commande : \n"
-echo -e "crontab -e\n"
-echo -e "Puis ajoutez la ligne mentionnée ci-dessus.\n"
+Configuration automatique (cron) :
+  Pour exécuter npm-sync toutes les 15 minutes, ajoutez à votre crontab 
+  (éditez avec `crontab -e`) :
+  
+  */15 * * * * /usr/local/bin/npm-sync >> /var/log/npm-sync.log 2>&1
+  
+  Cette ligne redirige les logs vers /var/log/npm-sync.log.
 
-#### ENGLISH VERSION ####
+Exécution manuelle :
+  npm-sync
 
-# 🎉 npm-sync has been installed successfully!
-echo -e "\n🎉 npm-sync has been installed successfully!\n"
+Informations complémentaires :
+  - Script installé : /usr/local/bin/npm-sync
+  - Fichier d'environnement : /root/.env_npm-sync
+  - Logs : /var/log/npm-sync.log
+  
+Pour modifier la crontab, utilisez : crontab -e
 
-# 🔧 Automatic Configuration (with cron)
-echo -e "You can now use the script `npm-sync` to synchronize your NPM packages.\n"
-echo -e "🔧 Automatic Configuration (with cron)\n"
-echo -e "To run `npm-sync` every 15 minutes, add this line to your crontab: \n"
-echo -e "# */15 * * * * /usr/local/bin/npm-sync >> /var/log/npm-sync.log 2>&1\n"
-echo -e "✅ This line redirects execution logs to the file `/var/log/npm-sync.log` for easy tracking.\n"
+================================================================================
 
-# 🔁 Manual Execution
-echo -e "🔁 Manual Execution\n"
-echo -e "If you prefer to run the synchronization on demand, use the command: \n"
-echo -e "npm-sync\n"
+[ENGLISH]
 
-# 📝 Additional Information
-echo -e "\nℹ️ Additional Information: \n"
-echo -e "- The script is installed in `/usr/local/bin/npm-sync`.\n"
-echo -e "- Logs are stored in `/var/log/npm-sync.log` (if enabled).\n"
-echo -e "- You can customize settings in the main script.\n"
+npm-sync has been installed successfully!
 
-# 📝 Tip
-echo -e "\n💡 Tip: \n"
-echo -e "To modify your crontab, use the command: \n"
-echo -e "crontab -e\n"
-echo -e "Then add the line mentioned above.\n"
+You can now use the script to synchronize your NPM packages.
+
+Automatic Configuration (cron) :
+  To run npm-sync every 15 minutes, add this line to your crontab 
+  (edit with `crontab -e`) :
+  
+  */15 * * * * /usr/local/bin/npm-sync >> /var/log/npm-sync.log 2>&1
+  
+  This line redirects logs to /var/log/npm-sync.log.
+
+Manual Execution :
+  npm-sync
+
+Additional Information :
+  - Script installed : /usr/local/bin/npm-sync
+  - Environment file : /root/.env_npm-sync
+  - Logs : /var/log/npm-sync.log
+  
+To modify crontab, use : crontab -e
+
+================================================================================
+EOF
