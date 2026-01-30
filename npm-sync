@@ -6,12 +6,12 @@ cleanup() {
   local exit_code=$?
   rm -f "$CSV" "$DOMAINS" "$ALL_DOMAINS" 2>/dev/null
   unset PIHOLE_PASSWORD SID CSRF AUTH_RESPONSE
-
+  
   if [[ -n "$SID" ]]; then
     curl -sS -X DELETE "${PIHOLE_HOST}/api/auth" \
       -H "X-FTL-SID: ${SID}" > /dev/null 2>&1 || true
   fi
-
+  
   exit $exit_code
 }
 
@@ -27,11 +27,14 @@ else
 fi
 
 # Variables
-SSH="ssh -i {NPM_SSH_KEY_PATH} -o ConnectTimeout=5 root@${NPM_HOST}"
+SSH="ssh -i /root/.ssh/id_pihole -o ConnectTimeout=5 root@${NPM_HOST}"
 CSV="/tmp/npm_domains.csv"
 ALL_DOMAINS="/tmp/all_domains.txt"
 DOMAINS="/tmp/npm_domains.txt"
-MIN_DOMAIN_COUNT=${MIN_DOMAIN_COUNT:-1} # Valeur par défaut si non définie
+
+# Valeurs par défaut
+MIN_DOMAIN_COUNT=${MIN_DOMAIN_COUNT:-3}
+CLEANUP_ORPHANS=${CLEANUP_ORPHANS:-false}
 
 # Validation
 if [[ -z "$PIHOLE_HOST" || -z "$PIHOLE_PASSWORD" || -z "$NPM_HOST" ]]; then
@@ -58,8 +61,8 @@ echo "📥 Récupération domaines NPM..."
 DOMAINS_RAW=$($SSH "sqlite3 /data/database.sqlite 'SELECT domain_names FROM proxy_host WHERE is_deleted = 0;'")
 echo "$DOMAINS_RAW" | jq -r '.[]' 2>/dev/null | sort -u > "$ALL_DOMAINS"
 
-# 3. Détecte tous les domaines cibles (seuil: au moins 3 occurrences)
-TARGET_DOMAINS=$(awk -F. -v min="$MIN_DOMAIN_COUNT" '{
+# 3. Détecte tous les domaines cibles actuels dans NPM
+CURRENT_TARGET_DOMAINS=$(awk -F. -v min="$MIN_DOMAIN_COUNT" '{
   if (NF >= 2) {
     suffix = $(NF-1)"."$NF
     count[suffix]++
@@ -71,61 +74,95 @@ END {
   }
 }' "$ALL_DOMAINS")
 
-# Vérifie TARGET_DOMAINS
-if [[ -z "$TARGET_DOMAINS" ]]; then
-  echo "❌ Impossible de détecter les domaines cibles"
-  exit 1
+# 4. Récupère TOUS les CNAMEs de Pi-hole
+echo "🔍 Récupération de tous les CNAMEs Pi-hole..."
+ALL_PIHOLE_CNAMES=$(curl -sS -X GET "${PIHOLE_HOST}/api/config/dns/cnameRecords" \
+  -H "X-FTL-SID: ${SID}")
+
+# 5. Détecte les domaines cibles orphelins (dans Pi-hole mais plus dans NPM)
+PIHOLE_TARGET_DOMAINS=$(echo "$ALL_PIHOLE_CNAMES" | jq -r '(.config.dns.cnameRecords // []) | .[] | split(",")[1]' | sort -u)
+
+ORPHAN_DOMAINS=$(comm -23 <(echo "$PIHOLE_TARGET_DOMAINS") <(echo "$CURRENT_TARGET_DOMAINS"))
+
+# 6. Supprime les CNAMEs des domaines orphelins si activé
+if [[ "$CLEANUP_ORPHANS" == "true" && -n "$ORPHAN_DOMAINS" ]]; then
+  echo ""
+  echo "🧹 Nettoyage des domaines orphelins..."
+  for ORPHAN_DOMAIN in $ORPHAN_DOMAINS; do
+    echo "  🗑️  Suppression de tous les CNAMEs vers ${ORPHAN_DOMAIN}..."
+    
+    # Récupère tous les CNAMEs pointant vers ce domaine
+    ORPHAN_CNAMES=$(echo "$ALL_PIHOLE_CNAMES" | jq -r "(.config.dns.cnameRecords // []) | .[] | select(endswith(\",${ORPHAN_DOMAIN}\"))")
+    
+    while IFS= read -r cname_entry; do
+      [[ -z "$cname_entry" ]] && continue
+      
+      # Encode pour l'URL
+      ENCODED=$(echo "$cname_entry" | sed 's/,/%2C/g')
+      
+      HTTP_CODE=$(curl -sS -w "%{http_code}" -o /dev/null \
+        -X DELETE "${PIHOLE_HOST}/api/config/dns/cnameRecords/${ENCODED}" \
+        -H "X-FTL-SID: ${SID}" \
+        -H "X-FTL-CSRF: ${CSRF}")
+      
+      SOURCE_DOMAIN=$(echo "$cname_entry" | cut -d',' -f1)
+      if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "204" ]]; then
+        echo "    ❌ ${SOURCE_DOMAIN}"
+      else
+        echo "    ⚠️  Échec suppression ${SOURCE_DOMAIN} (HTTP ${HTTP_CODE})"
+      fi
+    done <<< "$ORPHAN_CNAMES"
+  done
 fi
 
-echo "🎯 Domaines cibles détectés: $TARGET_DOMAINS"
+# Vérification si des domaines cibles existent
+if [[ -z "$CURRENT_TARGET_DOMAINS" ]]; then
+  echo "⚠️  Aucun domaine cible détecté dans NPM (seuil: ${MIN_DOMAIN_COUNT})"
+  echo "✅ Synchronisation terminée : 0 supprimés, 0 ajoutés"
+  exit 0
+fi
+
+echo ""
+echo "🎯 Domaines cibles détectés: $CURRENT_TARGET_DOMAINS"
 
 # Compteurs globaux
 TOTAL_DELETE=0
 TOTAL_ADD=0
 
-# Boucle sur chaque domaine cible
-for TARGET_DOMAIN in $TARGET_DOMAINS; do
+# Boucle sur chaque domaine cible actuel
+for TARGET_DOMAIN in $CURRENT_TARGET_DOMAINS; do
   echo ""
   echo "📍 Traitement de ${TARGET_DOMAIN}..."
-
-
- # 4. Filtre les domaines du domaine cible (sous-domaines ET racine)
-  awk -v target="$TARGET_DOMAIN" '
-    $0 == target || $0 ~ "\\." target "$"
-  ' "$ALL_DOMAINS" > "$DOMAINS"
-
+  
+  # Filtre uniquement les sous-domaines du domaine cible
+  grep "\.${TARGET_DOMAIN}$" "$ALL_DOMAINS" > "$DOMAINS" || true
   COUNT=$(wc -l < "$DOMAINS")
   echo "📊 ${COUNT} domaines ${TARGET_DOMAIN} trouvés"
 
- # 5. Récupère CNAMEs actuels de Pi-hole
-  echo "🔍 Récupération CNAMEs existants..."
-  CURRENT_CNAMES=$(curl -sS -X GET "${PIHOLE_HOST}/api/config/dns/cnameRecords" \
-    -H "X-FTL-SID: ${SID}")
+  # Récupère CNAMEs actuels de Pi-hole pour ce domaine
+  EXISTING=$(echo "$ALL_PIHOLE_CNAMES" | jq -r "(.config.dns.cnameRecords // []) | .[] | select(endswith(\",${TARGET_DOMAIN}\")) | split(\",\")[0]" | sort)
 
-  EXISTING=$(echo "$CURRENT_CNAMES" | jq -r "(.config.dns.cnameRecords // []) | .[] | select(endswith(\",${TARGET_DOMAIN}\")) | split(\",\")[0]" | sort)
-
- # 6. Détermine les CNAMEs à supprimer et ajouter
+  # Détermine les CNAMEs à supprimer et ajouter
   TO_DELETE=$(comm -23 <(echo "$EXISTING") <(sort "$DOMAINS"))
   TO_ADD=$(comm -13 <(echo "$EXISTING") <(sort "$DOMAINS"))
 
-  # Comptage sans grep -c
   DELETE_COUNT=$(echo "$TO_DELETE" | awk 'NF' | wc -l)
   ADD_COUNT=$(echo "$TO_ADD" | awk 'NF' | wc -l)
 
   echo "🗑️  ${DELETE_COUNT} CNAMEs à supprimer"
   echo "➕ ${ADD_COUNT} CNAMEs à ajouter"
 
-  # 7. Supprime les CNAMEs obsolètes
+  # Supprime les CNAMEs obsolètes
   if [[ -n "$TO_DELETE" ]]; then
     while read domain; do
       [[ -z "$domain" ]] && continue
       ENCODED="${domain}%2C${TARGET_DOMAIN}"
-
+      
       HTTP_CODE=$(curl -sS -w "%{http_code}" -o /dev/null \
         -X DELETE "${PIHOLE_HOST}/api/config/dns/cnameRecords/${ENCODED}" \
         -H "X-FTL-SID: ${SID}" \
         -H "X-FTL-CSRF: ${CSRF}")
-
+      
       if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "204" ]]; then
         echo "  ❌ ${domain}"
       else
@@ -134,11 +171,11 @@ for TARGET_DOMAIN in $TARGET_DOMAINS; do
     done <<< "$TO_DELETE"
   fi
 
-  # 8. Ajoute les nouveaux CNAMEs
+  # Ajoute les nouveaux CNAMEs
   if [[ -n "$TO_ADD" ]]; then
     while read domain; do
       [[ -z "$domain" ]] && continue
-
+      
       ENCODED="${domain}%2C${TARGET_DOMAIN}"
       RESPONSE=$(curl -sS -w "\n%{http_code}" \
         -X PUT "${PIHOLE_HOST}/api/config/dns/cnameRecords/${ENCODED}" \
@@ -146,10 +183,10 @@ for TARGET_DOMAIN in $TARGET_DOMAINS; do
         -H "X-FTL-CSRF: ${CSRF}" \
         -H "Content-Type: application/json" \
         -d "{}")
-
+      
       HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
       BODY=$(echo "$RESPONSE" | head -n-1)
-
+      
       if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "201" || "$HTTP_CODE" == "204" ]]; then
         echo "  ✅ ${domain}"
       else
@@ -161,13 +198,13 @@ for TARGET_DOMAIN in $TARGET_DOMAINS; do
       fi
     done <<< "$TO_ADD"
   fi
-
+  
   # Cumule les compteurs
   TOTAL_DELETE=$((TOTAL_DELETE + DELETE_COUNT))
   TOTAL_ADD=$((TOTAL_ADD + ADD_COUNT))
 done
 
-# 9. Reload DNS (une seule fois après tous les domaines)
+# Reload DNS (une seule fois après tous les domaines)
 echo ""
 echo "♻️  Rechargement DNS..."
 curl -sS --http1.1 -X POST "${PIHOLE_HOST}/api/action/restartdns" \
