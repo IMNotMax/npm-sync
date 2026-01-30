@@ -86,5 +86,4 @@
 - Traduire en anglais le reste de la documentation
 
  ## Licence
-MIT
- Indiquer la licence du projet ici (par exemple MIT).
+Licence MIT
