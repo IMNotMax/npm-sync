@@ -48,7 +48,7 @@ fi
 ## Message de finalisation
 
 # Affiche le message de succès en français et en anglais
-cat << 'EOF'
+cat << "EOF"
 
 ================================================================================
                    INSTALLATION RÉUSSIE - INSTALLATION SUCCESSFUL
@@ -59,6 +59,10 @@ cat << 'EOF'
 npm-sync a été installé avec succès !
 
 Vous pouvez désormais utiliser le script pour synchroniser vos paquets NPM.
+
+⚠️  Configuration requise :
+  Veuillez éditer le fichier $TARGET_ENV_FILE afin de remplir les éléments 
+  nécessaires. Consultez le README.md pour plus de détail.
 
 Configuration automatique (cron) :
   Pour exécuter npm-sync toutes les 15 minutes, ajoutez à votre crontab 
@@ -73,7 +77,7 @@ Exécution manuelle :
 
 Informations complémentaires :
   - Script installé : /usr/local/bin/npm-sync
-  - Fichier d'environnement : /root/.env_npm-sync
+  - Fichier d'environnement : $TARGET_ENV_FILE
   - Logs : /var/log/npm-sync.log
   
 Pour modifier la crontab, utilisez : crontab -e
@@ -85,6 +89,10 @@ Pour modifier la crontab, utilisez : crontab -e
 npm-sync has been installed successfully!
 
 You can now use the script to synchronize your NPM packages.
+
+⚠️  Required Configuration :
+  Please edit the file $TARGET_ENV_FILE to fill in the necessary elements. 
+  Consult the README.md for more details.
 
 Automatic Configuration (cron) :
   To run npm-sync every 15 minutes, add this line to your crontab 
@@ -99,7 +107,7 @@ Manual Execution :
 
 Additional Information :
   - Script installed : /usr/local/bin/npm-sync
-  - Environment file : /root/.env_npm-sync
+  - Environment file : $TARGET_ENV_FILE
   - Logs : /var/log/npm-sync.log
   
 To modify crontab, use : crontab -e
