@@ -31,9 +31,8 @@ fi
 # Rend le script npm-sync exécutable
 chmod +x /usr/local/bin/npm-sync
 
-# Copie le fichier d'exemple d'environnement et modifie le chemin SSH en fonction de USER_HOME
-# Lire le fichier d'exemple, remplacer le chemin SSH et écrire vers la destination
-sed "s|PATH_FOR_YOUR_KEY|$USER_HOME\/.ssh\/id_pihole|g" .env_npm-sync_example > $TARGET_ENV_FILE
+# Copie le fichier d'exemple d'environnement
+cp .env_npm-sync_example $TARGET_ENV_FILE
 
 # Définit les permissions du fichier d'environnement pour qu'il soit accessible uniquement par le propriétaire
 chmod 600 $TARGET_ENV_FILE

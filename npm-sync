@@ -4,7 +4,7 @@ set -e
 # Fonction de nettoyage
 cleanup() {
   local exit_code=$?
-  rm -f "$CSV" "$DOMAINS" "$ALL_DOMAINS" 2>/dev/null
+  rm -f "$DOMAINS" "$ALL_DOMAINS" 2>/dev/null
   unset PIHOLE_PASSWORD SID CSRF AUTH_RESPONSE
   
   if [[ -n "$SID" ]]; then
@@ -27,8 +27,6 @@ else
 fi
 
 # Variables
-SSH="ssh -i /root/.ssh/id_pihole -o ConnectTimeout=5 root@${NPM_HOST}"
-CSV="/tmp/npm_domains.csv"
 ALL_DOMAINS="/tmp/all_domains.txt"
 DOMAINS="/tmp/npm_domains.txt"
 
@@ -58,8 +56,8 @@ fi
 
 # 2. Récupère tous les domaines depuis NPM
 echo "📥 Récupération domaines NPM..."
-DOMAINS_RAW=$($SSH "sqlite3 /data/database.sqlite 'SELECT domain_names FROM proxy_host WHERE is_deleted = 0;'")
-echo "$DOMAINS_RAW" | jq -r '.[]' 2>/dev/null | sort -u > "$ALL_DOMAINS"
+DOMAINS_RAW=$(curl -sS "${NPM_HOST}/api/hosts")
+echo "$DOMAINS_RAW" | jq -r '.[].domain_names[]' 2>/dev/null | sort -u > "$ALL_DOMAINS"
 
 # 3. Détecte tous les domaines cibles actuels dans NPM
 CURRENT_TARGET_DOMAINS=$(awk -F. -v min="$MIN_DOMAIN_COUNT" '{

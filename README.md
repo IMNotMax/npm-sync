@@ -8,28 +8,9 @@
 
  ## Prérequis
 
- - Un serveur Pi-hole opérationnel
- - Nginx Proxy Manager (NPM) avec au moins un hôte configuré
- - Accès SSH entre les serveurs (clé SSH sans mot de passe recommandée)
-
- Sur Debian/Ubuntu, installer le serveur SSH si nécessaire :
-
- ```bash
- sudo apt update
- sudo apt install -y openssh-server
- sudo systemctl enable --now ssh
- ```
-*Note : pensez à authoriser une premiére connexion sans clé sur le serveur NPM, surtout si l,uitilisateur est root (editer  /etc/ssh/sshd_config >> PermitRootLogin yes puis sudo systemctl restart sshd -- remettre PermitRootLogin prohibit-password pour n'utiliser que la clé ssh)*
- Générer une clé SSH sur le serveur NPM et copier la clé publique vers Pi-hole :
-
- ```bash
- # Sur le serveur pihole
- ssh-keygen -t ed25519 -f ~/.ssh/id_pihole -N "" -C "pihole@$(hostname)"
- ssh-copy-id -i ~/.ssh/id_npm.pub root@npm.local ##remplacer par l'IP de votre NPM
-
- # Test depuis pihole
- ssh -i ~/.ssh/id_npm root@npm.local
- ```
+- Un serveur Pi-hole opérationnel
+- Nginx Proxy Manager (NPM) avec au moins un hôte configuré
+- API NPM accessible (endpoint `/api/hosts`)
 
  ## Installation
 
@@ -72,8 +53,8 @@
     PIHOLE_HOST=http://your-pihole.local
     l'URL de votre serveur Pihole
 
-    NPM_HOST=192.168.x.x # Replace with your NPM host IP
-    L'IP de votre serveur NPM
+    NPM_HOST=http://192.168.x.x:5000
+    L'URL de l'API de votre serveur NPM (endpoint /api/hosts)
 
     MIN_DOMAIN_COUNT=1
     Si vous avez plusieurs domaines gérés dans votre NPM, cela permet de remonter la config NPM dans Pihole à partir d'une occurence de sub-domain.domain.tld. Si vous faites des tests avec un autre domaine (et possiblement un autre serveur DNS) augmentez cette valeur
@@ -81,9 +62,6 @@
 
     CLEANUP_ORPHANS=true # Set to true to remove orphaned domains from Pi-hole
     Permet de supprimer le ou les derniers sub-domain d'un domain.tld dans pihole lorsque qu'il n'existent plus dans NPM
-
-    NPM_SSH_KEY_PATH=/home/$USER/.ssh/id_pihole # Replace with the path to your SSH key
-    Chemin de la clé SSH (le chemin est déterminé dans l'install en fonction de votre user : root ou non)
 
  ## Contribution
 
