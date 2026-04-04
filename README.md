@@ -8,11 +8,45 @@
 
  ## Prérequis
 
-- Un serveur Pi-hole opérationnel
-- Nginx Proxy Manager (NPM) avec au moins un hôte configuré
-- API NPM accessible (endpoint `/api/hosts`)
+ - Un serveur Pi-hole opérationnel
+ - Nginx Proxy Manager (NPM) avec au moins un hôte configuré
+ - API NPM accessible (endpoint `/api/hosts`) - voir section "Installation de l'API NPM" ci-dessous
 
- ## Installation
+ ## Installation de l'API NPM
+
+ Pour que npm-sync puisse récupérer les hôtes depuis Nginx Proxy Manager, vous devez d'abord déployer une API Flask sur le serveur NPM.
+
+ ```bash
+ # Sur le serveur NPM, naviguez vers le dossier for_NPM
+ cd for_NPM
+
+ # Lancez le script d'installation
+ sudo sh install.sh
+ ```
+
+ Le script d'installation va :
+ - Installer les dépendances Python (Flask, Flask-CORS)
+ - Copier le fichier `api.py` dans `/opt/nginx_proxy_manager_api/`
+ - Créer et activer un service systemd
+ - Démarrer le service
+
+ Vérifiez que l'API fonctionne correctement :
+
+ ```bash
+ # Vérifier le statut du service
+ sudo systemctl status nginx-proxy-manager-api
+
+ # Voir les logs du service
+ sudo journalctl -u nginx-proxy-manager-api -f
+
+ # Tester l'API
+ curl http://localhost:5000/health
+ curl http://localhost:5000/api/hosts
+ ```
+
+ L'API sera accessible sur le port 5000 de votre serveur NPM.
+
+  ## Installation
 
  ```bash
  # Cloner le dépôt

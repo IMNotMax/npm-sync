@@ -1,0 +1,19 @@
+[Unit]
+Description=Nginx Proxy Manager API
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/nginx_proxy_manager_api
+ExecStart=/usr/bin/python3 /opt/nginx_proxy_manager_api/api.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
