@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Vérifie si l'utilisateur est root ou non
 if [ "$(id -u)" -eq 0 ]; then
@@ -15,7 +16,7 @@ fi
 TARGET_ENV_FILE=$USER_HOME/.env_npm-sync
 
 # Backup existing .env_npm-sync if it exists
-if [[ -f "$TARGET_ENV_FILE" ]]; then
+if [ -f "$TARGET_ENV_FILE" ]; then
     BACKUP_FILE="${TARGET_ENV_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
     cp "$TARGET_ENV_FILE" "$BACKUP_FILE"
     echo "📄 Backup created: $BACKUP_FILE"
@@ -54,7 +55,7 @@ fi
 ## Message de finalisation
 
 # Affiche le message de succès en français et en anglais
-if [[ -f "$BACKUP_FILE" ]]; then
+if [ -f "$BACKUP_FILE" ]; then
     BACKUP_MSG="📄 Backup: $BACKUP_FILE"
 else
     BACKUP_MSG=""

@@ -19,8 +19,10 @@ trap cleanup EXIT INT TERM
 
 # Charge les variables d'environnement
 ENV_FILE="/root/.env_npm-sync"
-if [[ -f "$ENV_FILE" ]]; then
-  export $(grep -v '^#' "$ENV_FILE" | xargs)
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  source "$ENV_FILE"
+  set +a
 else
   echo "❌ Fichier $ENV_FILE introuvable"
   exit 1
