@@ -59,7 +59,7 @@ fi
 # 2. Récupère tous les domaines depuis NPM
 echo "📥 Récupération domaines NPM..."
 DOMAINS_RAW=$(curl -sS "${NPM_HOST}/api/hosts")
-echo "$DOMAINS_RAW" | jq -r '.[].domain_names[]' 2>/dev/null | sort -u > "$ALL_DOMAINS"
+echo "$DOMAINS_RAW" | jq -r '.hosts[].domain' 2>/dev/null | sort -u > "$ALL_DOMAINS"
 
 # 3. Détecte tous les domaines cibles actuels dans NPM
 CURRENT_TARGET_DOMAINS=$(awk -F. -v min="$MIN_DOMAIN_COUNT" '{

@@ -39,7 +39,7 @@ fi
 # Rend le script npm-sync exécutable
 chmod +x /usr/local/bin/npm-sync
 
-# Copie le fichier d'exemple d'environnement
+# Copie le fichier d'exemple d'environnement (remplace l'existant sans backup car déjà fait)
 cp .env_npm-sync_example $TARGET_ENV_FILE
 
 # Définit les permissions du fichier d'environnement pour qu'il soit accessible uniquement par le propriétaire
