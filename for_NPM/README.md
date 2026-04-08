@@ -42,10 +42,10 @@ sudo systemctl status nginx-proxy-manager-api
 sudo journalctl -u nginx-proxy-manager-api -f
 
 # Tester l'endpoint de santé
-curl http://localhost:5000/health
+curl http://localhost:5055/health
 
 # Tester l'endpoint des hôtes
-curl http://localhost:5000/api/hosts
+curl http://localhost:5055/api/hosts
 ```
 
 ## Gestion du service
@@ -70,7 +70,7 @@ sudo systemctl disable nginx-proxy-manager-api
 ## Configuration
 
 Par défaut, l'API :
-- Écoute sur le port 5000 sur toutes les interfaces (`0.0.0.0`)
+- Écoute sur le port 5055 sur toutes les interfaces (`0.0.0.0`)
 - Utilise la base de données NPM située à `/data/database.sqlite`
 - Exécute sous l'utilisateur `www-data`
 

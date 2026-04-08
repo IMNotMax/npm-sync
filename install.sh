@@ -14,6 +14,13 @@ fi
 # Définit le chemin du fichier d'environnement cible
 TARGET_ENV_FILE=$USER_HOME/.env_npm-sync
 
+# Backup existing .env_npm-sync if it exists
+if [[ -f "$TARGET_ENV_FILE" ]]; then
+    BACKUP_FILE="${TARGET_ENV_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+    cp "$TARGET_ENV_FILE" "$BACKUP_FILE"
+    echo "📄 Backup created: $BACKUP_FILE"
+fi
+
 # Script d'installation pour npm-sync
 
 # Copie le binaire npm-sync dans le répertoire /usr/local/bin pour un accès global
@@ -47,6 +54,12 @@ fi
 ## Message de finalisation
 
 # Affiche le message de succès en français et en anglais
+if [[ -f "$BACKUP_FILE" ]]; then
+    BACKUP_MSG="📄 Backup: $BACKUP_FILE"
+else
+    BACKUP_MSG=""
+fi
+
 cat << "EOF"
 
 ================================================================================
@@ -78,6 +91,7 @@ Informations complémentaires :
   - Script installé : /usr/local/bin/npm-sync
   - Fichier d'environnement : $TARGET_ENV_FILE
   - Logs : /var/log/npm-sync.log
+  $BACKUP_MSG
   
 Pour modifier la crontab, utilisez : crontab -e
 
@@ -108,6 +122,7 @@ Additional Information :
   - Script installed : /usr/local/bin/npm-sync
   - Environment file : $TARGET_ENV_FILE
   - Logs : /var/log/npm-sync.log
+  $BACKUP_MSG
   
 To modify crontab, use : crontab -e
 

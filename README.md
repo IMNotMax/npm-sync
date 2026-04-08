@@ -39,9 +39,9 @@
  # Voir les logs du service
  sudo journalctl -u nginx-proxy-manager-api -f
 
- # Tester l'API
- curl http://localhost:5000/health
- curl http://localhost:5000/api/hosts
+# Tester l'API
+curl http://localhost:5055/health
+curl http://localhost:5055/api/hosts
  ```
 
  L'API sera accessible sur le port 5000 de votre serveur NPM.
@@ -87,8 +87,8 @@
     PIHOLE_HOST=http://your-pihole.local
     l'URL de votre serveur Pihole
 
-    NPM_HOST=http://192.168.x.x:5000
-    L'URL de l'API de votre serveur NPM (endpoint /api/hosts)
+    NPM_HOST=http://192.168.x.x:5055
+    npm host (port 5055)
 
     MIN_DOMAIN_COUNT=1
     Si vous avez plusieurs domaines gérés dans votre NPM, cela permet de remonter la config NPM dans Pihole à partir d'une occurence de sub-domain.domain.tld. Si vous faites des tests avec un autre domaine (et possiblement un autre serveur DNS) augmentez cette valeur
