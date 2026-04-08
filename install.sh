@@ -78,8 +78,8 @@ Vous pouvez désormais utiliser le script pour synchroniser vos paquets NPM.
   nécessaires. Consultez le README.md pour plus de détail.
 
 Configuration automatique (cron) :
-  Pour exécuter npm-sync toutes les 15 minutes, ajoutez à votre crontab 
-  (éditez avec `crontab -e`) :
+  Pour exécuter npm-sync toutes les 15 minutes, ajoutez à votre crontab
+  (éditez avec "crontab -e") :
   
   */15 * * * * /usr/local/bin/npm-sync >> /var/log/npm-sync.log 2>&1
   
@@ -109,8 +109,8 @@ You can now use the script to synchronize your NPM packages.
   Consult the README.md for more details.
 
 Automatic Configuration (cron) :
-  To run npm-sync every 15 minutes, add this line to your crontab 
-  (edit with `crontab -e`) :
+  To run npm-sync every 15 minutes, add this line to your crontab
+  (edit with "crontab -e") :
   
   */15 * * * * /usr/local/bin/npm-sync >> /var/log/npm-sync.log 2>&1
   
@@ -125,7 +125,7 @@ Additional Information :
   - Logs : /var/log/npm-sync.log
   $BACKUP_MSG
   
-To modify crontab, use : crontab -e
+To modify crontab, use : "crontab -e"
 
 ================================================================================
 EOF
