@@ -60,7 +60,7 @@ else
     BACKUP_MSG=""
 fi
 
-cat << "EOF"
+cat << EOF
 
 ================================================================================
                    INSTALLATION RÉUSSIE - INSTALLATION SUCCESSFUL
